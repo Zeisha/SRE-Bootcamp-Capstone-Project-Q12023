@@ -28,6 +28,7 @@ build/Release
 node_modules
 
 # Environment key file
+venv/
 .env
 .env.*
 !.env.example

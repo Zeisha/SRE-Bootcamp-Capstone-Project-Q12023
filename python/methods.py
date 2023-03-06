@@ -1,27 +1,36 @@
 import hashlib
 import jwt
+from os import getenv
+from dbconnect import get_userdata
+
+SECRET_KEY = getenv("JWT_KEY")
+
+
+def salted_password(password, salt):
+    return hashlib.sha512((password + salt).encode()).hexdigest()
+
+
 class Token:
-    def generateToken(self, username, input_password, Query):  
-        usefulKey = 'my2w7wjd7yXF64FIADfJxNs1oupTGAuW'
-        if len(Query):
-            salt=Query[0][0]
-            password=Query[0][1]
-            role=Query[0][2]  
-            hashPass=hashlib.sha512((input_password+salt).encode()).hexdigest()
-            if hashPass==password:
-                enJWT = jwt.encode({"role": role}, usefulKey, algorithm='HS256')
-                return enJWT
-            else:
-                return False
-        else:
-            return False
+    def generate_token(self, username, password):
+        result = get_userdata(username)
+        if result.username == username and result.password == salted_password(
+            password, result.salt
+        ):
+            return jwt.encode(payload={"role": result.role}, key=SECRET_KEY)
+
+    def decrypt_token(self, token):
+        return jwt.decode(token, SECRET_KEY, algorithms="HS256")
+
+
 class Restricted:
-    def access_Data(self, authorization): 
+    def access_data(self, authorization):
+        token = authorization.removeprefix("Bearer ")
         try:
-            var1=jwt.decode(authorization.replace('Bearer', '')[1:], 'my2w7wjd7yXF64FIADfJxNs1oupTGAuW', algorithms='HS256')
-        except Exception as e:
-            return False
-        if 'role' in var1:
-            return True  
-        else:
-            return False
+            decoded = Token().decrypt_token(token)
+        except jwt.DecodeError:
+            return "Restricted"
+
+        if "role" in decoded and decoded["role"] in ["editor", "admin"]:
+            return True
+
+        return False
