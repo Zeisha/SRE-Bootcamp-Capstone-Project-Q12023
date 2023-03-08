@@ -1,14 +1,27 @@
 from flask import Flask, request, jsonify
-from convert import CidrMaskConvert, IpValidate
-from methods import Token, Restricted
+from networking import get_cidr_from_mask, get_mask_from_cidr
+from auth import Auth
 from os import getenv
 
 app = Flask(__name__)
-login = Token()
-protected = Restricted()
-convert = CidrMaskConvert()
-validate = IpValidate()
+auth = Auth()
 port = int(getenv("APP_PORT"))
+
+
+def is_valid_authorization():
+    authorization = request.headers.get("Authorization")
+    token = authorization.removeprefix("Bearer ")
+    return authorization.startswith("Bearer") and auth.is_valid_token(token)
+
+
+def json_response(function, input, output):
+    return jsonify(
+        {
+            "function": function,
+            "input": input,
+            "output": output,
+        }
+    )
 
 
 @app.route("/")
@@ -23,9 +36,12 @@ def api_health():
 
 @app.route("/login", methods=["POST"])
 def user_login():
+    """
+    usage: http://127.0.0.1:8000/login
+    """
     username = request.form["username"]
     password = request.form["password"]
-    token = login.generate_token(username, password)
+    token = auth.generate_token(username, password)
 
     if token is None:
         return "", 401
@@ -35,30 +51,26 @@ def user_login():
 
 @app.route("/cidr-to-mask")
 def cidr_to_mask():
-    auth_token = request.headers.get("Authorization")
-    if not protected.access_data(auth_token):
-        return "", 401
-    cidr_value = request.args.get("value")
-    mask = {
-        "function": "cidrToMask",
-        "input": cidr_value,
-        "output": convert.cidr_to_mask(cidr_value),
-    }
-    return jsonify(mask)
+    """
+    usage: http://127.0.0.1:8000/cidr-to-mask?value=8
+    """
+    cidr = request.args.get("value")
+    if is_valid_authorization() and cidr:
+        return json_response("cidrToMask", cidr, get_mask_from_cidr(cidr))
+
+    return "", 401
 
 
 @app.route("/mask-to-cidr")
 def mask_to_cidr():
-    auth_token = request.headers.get("Authorization")
-    if not protected.access_data(auth_token):
-        return "", 401
+    """
+    usage: http://127.0.0.1:8000/mask-to-cidr?value=255.0.0.0
+    """
     mask = request.args.get("value")
-    cidr_value = {
-        "function": "maskToCidr",
-        "input": mask,
-        "output": convert.mask_to_cidr(mask),
-    }
-    return jsonify(cidr_value)
+    if is_valid_authorization() and mask:
+        return json_response("maskToCidr", mask, get_cidr_from_mask(mask))
+
+    return "", 401
 
 
 if __name__ == "__main__":
