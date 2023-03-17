@@ -4,7 +4,7 @@ from os import getenv
 from model import User
 
 
-def get_session():
+def make_session():
     dbuser = getenv("DB_USER")
     dbhost = getenv("DB_HOST")
     dbpass = getenv("DB_PASSWORD")
@@ -14,10 +14,13 @@ def get_session():
     return sessionmaker(bind=engine)
 
 
+Session = make_session()
+
+
 def get_userdata(username):
     query = select(User).where(User.username == username)
 
-    with get_session() as session:
+    with Session() as session:
         user_data = session.scalars(query).first() or User(
             username="", password="", salt="", role=""
         )
