@@ -61,3 +61,15 @@ curl -H 'Accept: application/json' -H "Authorization: Bearer eyJhbGciOiJIUzI1NiI
 output: {"function":"maskToCidr","input":"'0.0.0.0'","output":"Invalid mask provided"}
 
 ```
+
+
+### Wizeline AWS Architecture
+
+![Alt text](wizeline.svg)
+
+
+
+
+### Poonam AWS Architecture
+
+![Alt text](./poonam.svg)
