@@ -4,25 +4,33 @@ resource "aws_cloudwatch_log_group" "capstone-watch" {
   retention_in_days = 1
 }
 
+resource "aws_kms_key" "capstone-kms" {
+  description             = "capstone kms key "
+  deletion_window_in_days = 7
+}
+
 # Configure ECS Cluster
 resource "aws_ecs_cluster" "capstone-cluster" {
   name = "capstone-cluster"
 
-  #   configuration {
-  #     execute_command_configuration {
-  #       log_configuration {
-  #         cloud_watch_encryption_enabled = true
-  #         cloud_watch_log_group_name     = aws_cloudwatch_log_group.capstone-watch.name
-  #       }
-  #     }
-  #   }
+    configuration {
+      execute_command_configuration {
+          kms_key_id = aws_kms_key.capstone-kms.arn
+          logging    = "OVERRIDE"
+          
+        log_configuration {
+          cloud_watch_encryption_enabled = true
+          cloud_watch_log_group_name     = aws_cloudwatch_log_group.capstone-watch.name
+        }
+      }
+    }
 }
 
 # Configure Task Defination
 resource "aws_ecs_task_definition" "capstone-task" {
   family = "capstone"
 
-  container_definitions = <<EOF
+  container_definitions    = <<EOF
 [
         {
             "name": "capstone",
@@ -80,7 +88,7 @@ data "aws_iam_policy_document" "assume_role_policy" {
 }
 
 resource "aws_iam_role_policy_attachment" "ecsTaskExecutionRole_policy" {
-  role       = "${aws_iam_role.ecsTaskExecutionRole.name}"
+  role       = aws_iam_role.ecsTaskExecutionRole.name
   policy_arn = "arn:aws:iam::aws:policy/service-role/AmazonECSTaskExecutionRolePolicy"
 }
 
@@ -88,12 +96,12 @@ resource "aws_iam_role_policy_attachment" "ecsTaskExecutionRole_policy" {
 
 #Configure load balancer
 resource "aws_alb" "capstone_load_balancer" {
-  name               = "capstone-load-balancer" 
+  name               = "capstone-load-balancer"
   load_balancer_type = "application"
-  subnets = module.vpc.public_subnets
+  subnets            = module.vpc.public_subnets
 
   # security group
-  security_groups = ["${aws_security_group.load_balancer_security_group.id}"]
+  security_groups = [aws_security_group.load_balancer_security_group.id]
 }
 
 # create target group 
@@ -107,12 +115,12 @@ resource "aws_lb_target_group" "capstone-lb-target" {
 }
 
 resource "aws_lb_listener" "listener" {
-  load_balancer_arn = "${aws_alb.capstone_load_balancer.arn}" #  load balancer
+  load_balancer_arn = aws_alb.capstone_load_balancer.arn #  load balancer
   port              = "80"
   protocol          = "HTTP"
   default_action {
     type             = "forward"
-    target_group_arn = "${aws_lb_target_group.capstone-lb-target.arn}" # target group
+    target_group_arn = aws_lb_target_group.capstone-lb-target.arn # target group
   }
 }
 
@@ -123,7 +131,7 @@ resource "aws_ecs_service" "capstone-service" {
   cluster         = aws_ecs_cluster.capstone-cluster.id
   task_definition = aws_ecs_task_definition.capstone-task.arn
 
-  launch_type     = "FARGATE"
+  launch_type   = "FARGATE"
   desired_count = 2
 
   load_balancer {
@@ -134,9 +142,9 @@ resource "aws_ecs_service" "capstone-service" {
 
   network_configuration {
     subnets          = module.vpc.public_subnets
-    assign_public_ip = true     # Provide the containers with public IPs
+    assign_public_ip = true # Provide the containers with public IPs
     security_groups  = [aws_security_group.capstone-service-security-group.id]
-    }
+  }
 
   deployment_maximum_percent         = 100
   deployment_minimum_healthy_percent = 0
