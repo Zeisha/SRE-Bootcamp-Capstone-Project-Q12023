@@ -17,7 +17,7 @@ resource "aws_ecs_cluster" "capstone-cluster" {
       execute_command_configuration {
           kms_key_id = aws_kms_key.capstone-kms.arn
           logging    = "OVERRIDE"
-          
+
         log_configuration {
           cloud_watch_encryption_enabled = true
           cloud_watch_log_group_name     = aws_cloudwatch_log_group.capstone-watch.name
@@ -132,7 +132,7 @@ resource "aws_ecs_service" "capstone-service" {
   task_definition = aws_ecs_task_definition.capstone-task.arn
 
   launch_type   = "FARGATE"
-  desired_count = 2
+  desired_count = 1
 
   load_balancer {
     target_group_arn = aws_lb_target_group.capstone-lb-target.arn # Reference the target group
