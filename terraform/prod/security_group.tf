@@ -1,5 +1,7 @@
 # Create a security group for the load balancer:
 resource "aws_security_group" "lb-security-group" {
+  vpc_id = module.vpc.vpc_id
+
   ingress {
     from_port   = 80
     to_port     = 80
@@ -18,6 +20,8 @@ resource "aws_security_group" "lb-security-group" {
 
 # service sg
 resource "aws_security_group" "service-security-group" {
+  vpc_id = module.vpc.vpc_id
+  
   ingress {
     from_port = 0
     to_port   = 0
