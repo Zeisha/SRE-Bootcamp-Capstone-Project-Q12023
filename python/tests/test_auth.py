@@ -50,6 +50,9 @@ class TestAuth(unittest.TestCase):
             self.auth.is_valid_claim({"username": "xyz", "role": "Superuser"})
         )
 
+    def test_dummy(self):
+        self.assertTrue(True)
+
 
 if __name__ == "__main__":
     unittest.main()
