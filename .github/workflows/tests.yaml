@@ -8,6 +8,10 @@ on:
     branches:
       - main
 
+# Env variable
+env:
+  JWT_KEY: ${{secrets.JWT_KEY}}
+
 jobs:
   test:
     runs-on: ubuntu-latest
