@@ -30,4 +30,6 @@ class Auth:
         return self.is_valid_claim(claim)
 
     def is_valid_claim(self, claim):
+        x = "test"
+        print(x)
         return user_service.is_valid_role(claim["role"])
