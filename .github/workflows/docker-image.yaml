@@ -23,7 +23,6 @@ jobs:
       run: | # log into docker hub account
         docker login -u $DOCKER_USER -p $DOCKER_PASSWORD  
     - name: Build the Docker image 
-      run: docker build -t $DOCKER_USER/$REPO_NAME:latest .
+      run: docker build -t $DOCKER_USER/$REPO_NAME:latest python/
     - name: Push the Docker image 
       run: docker push $DOCKER_USER/$REPO_NAME:latest 
-      
