@@ -132,7 +132,7 @@ resource "aws_ecs_service" "cluster-service" {
   task_definition      = aws_ecs_task_definition.task.arn
   force_new_deployment = true
   launch_type          = "FARGATE"
-  desired_count        = 1
+  desired_count        = 12
 
   load_balancer {
     target_group_arn = aws_lb_target_group.lb-target-group.arn # Reference the target group
@@ -147,5 +147,5 @@ resource "aws_ecs_service" "cluster-service" {
   }
 
   deployment_maximum_percent         = 100
-  deployment_minimum_healthy_percent = 0
+  deployment_minimum_healthy_percent = 50
 }
