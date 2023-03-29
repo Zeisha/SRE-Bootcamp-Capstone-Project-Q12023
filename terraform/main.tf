@@ -13,17 +13,17 @@ resource "aws_kms_key" "capstone-kms" {
 resource "aws_ecs_cluster" "capstone-cluster" {
   name = "capstone-cluster"
 
-    configuration {
-      execute_command_configuration {
-          kms_key_id = aws_kms_key.capstone-kms.arn
-          logging    = "OVERRIDE"
+  configuration {
+    execute_command_configuration {
+      kms_key_id = aws_kms_key.capstone-kms.arn
+      logging    = "OVERRIDE"
 
-        log_configuration {
-          cloud_watch_encryption_enabled = true
-          cloud_watch_log_group_name     = aws_cloudwatch_log_group.capstone-watch.name
-        }
+      log_configuration {
+        cloud_watch_encryption_enabled = true
+        cloud_watch_log_group_name     = aws_cloudwatch_log_group.capstone-watch.name
       }
     }
+  }
 }
 
 # Configure Task Defination
@@ -127,12 +127,12 @@ resource "aws_lb_listener" "listener" {
 
 # Configure ECS Service
 resource "aws_ecs_service" "capstone-service" {
-  name            = "capstone-service"
-  cluster         = aws_ecs_cluster.capstone-cluster.id
-  task_definition = aws_ecs_task_definition.capstone-task.arn
-
-  launch_type   = "FARGATE"
-  desired_count = 1
+  name                 = "capstone-service"
+  cluster              = aws_ecs_cluster.capstone-cluster.id
+  task_definition      = aws_ecs_task_definition.capstone-task.arn
+  force_new_deployment = true
+  launch_type          = "FARGATE"
+  desired_count        = 1
 
   load_balancer {
     target_group_arn = aws_lb_target_group.capstone-lb-target.arn # Reference the target group
