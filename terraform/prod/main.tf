@@ -1,5 +1,4 @@
-# Configure cloud watch 
-resource "aws_cloudwatch_log_group" "capstone-watch" {
+ resource "aws_cloudwatch_log_group" "capstone-watch" {
   name              = "capstone-watch"
   retention_in_days = 1
 }
@@ -9,7 +8,6 @@ resource "aws_kms_key" "capstone-kms" {
   deletion_window_in_days = 7
 }
 
-# Configure ECS Cluster
 resource "aws_ecs_cluster" "cluster" {
   name = "${var.project_name}-cluster"
 
@@ -26,7 +24,6 @@ resource "aws_ecs_cluster" "cluster" {
   }
 }
 
-# Configure Task Defination
 resource "aws_ecs_task_definition" "task" {
   family = var.task_family_name
 
@@ -63,14 +60,14 @@ resource "aws_ecs_task_definition" "task" {
   }
 ]
 EOF
-  requires_compatibilities = ["FARGATE"] # use Fargate as the launch type
-  network_mode             = "awsvpc"    # add the AWS VPN network mode as this is required for Fargate
-  memory                   = 512         # Specify the memory the container requires
-  cpu                      = 256         # Specify the CPU the container requires
+  requires_compatibilities = ["FARGATE"]
+  network_mode             = "awsvpc"  
+  memory                   = 512      
+  cpu                      = 256       
   execution_role_arn       = aws_iam_role.ecsTaskExecutionRole.arn
 }
 
-#Configure task execution role , import of this existing iam role needed
+
 resource "aws_iam_role" "ecsTaskExecutionRole" {
   name               = "ecsTaskExecutionRole"
   assume_role_policy = data.aws_iam_policy_document.assume_role_policy.json
@@ -94,17 +91,15 @@ resource "aws_iam_role_policy_attachment" "ecs-execution-policy" {
 
 
 
-#Configure load balancer
 resource "aws_alb" "load-balancer" {
   name               = "${var.project_name}-lb"
   load_balancer_type = "application"
   subnets            = module.vpc.public_subnets
 
-  # security group
+
   security_groups = [aws_security_group.lb-security-group.id]
 }
 
-# create target group 
 
 resource "aws_lb_target_group" "lb-target-group" {
   name        = "${var.project_name}-lb-tg"
@@ -115,37 +110,36 @@ resource "aws_lb_target_group" "lb-target-group" {
 }
 
 resource "aws_lb_listener" "listener" {
-  load_balancer_arn = aws_alb.load-balancer.arn #  load balancer
+  load_balancer_arn = aws_alb.load-balancer.arn 
   port              = "80"
   protocol          = "HTTP"
   default_action {
     type             = "forward"
-    target_group_arn = aws_lb_target_group.lb-target-group.arn # target group
+    target_group_arn = aws_lb_target_group.lb-target-group.arn 
   }
 }
 
 
-# Configure ECS Service
 resource "aws_ecs_service" "cluster-service" {
   name                 = "${var.project_name}-service"
   cluster              = aws_ecs_cluster.cluster.id
   task_definition      = aws_ecs_task_definition.task.arn
   force_new_deployment = true
   launch_type          = "FARGATE"
-  desired_count        = 2
+  desired_count        = 1
 
   load_balancer {
-    target_group_arn = aws_lb_target_group.lb-target-group.arn # Reference the target group
+    target_group_arn = aws_lb_target_group.lb-target-group.arn 
     container_name   = aws_ecs_task_definition.task.family
-    container_port   = 8000 # Specify the container port
+    container_port   = 8000 
   }
 
   network_configuration {
     subnets          = module.vpc.public_subnets
-    assign_public_ip = true # Provide the containers with public IPs
+    assign_public_ip = true 
     security_groups  = [aws_security_group.service-security-group.id]
   }
 
-  deployment_maximum_percent         = 100
-  deployment_minimum_healthy_percent = 50
+  deployment_maximum_percent         = 200
+  deployment_minimum_healthy_percent = 100
 }
