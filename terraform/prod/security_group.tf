@@ -1,5 +1,5 @@
 resource "aws_security_group" "lb-security-group" {
-  name = "capstone-lb-sg"
+  name = "${var.project_name}-lb-sg"
   description = "Security group for capstone loadbalancer"
   vpc_id = module.vpc.vpc_id
 
@@ -20,7 +20,7 @@ resource "aws_security_group" "lb-security-group" {
 
 
 resource "aws_security_group" "service-security-group" {
-  name = "capstone-service-sg"
+  name = "${var.project_name}-service-sg"
   description = "Security group for capstone service"
   vpc_id = module.vpc.vpc_id
   
