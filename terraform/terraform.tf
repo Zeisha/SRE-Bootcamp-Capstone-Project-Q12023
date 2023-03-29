@@ -3,7 +3,10 @@ terraform {
     organization = "capstone-ltd"
     workspaces {
       name = "capstone-infra"
-  }
+    }
+    workspaces {
+      name = "capstone-dev-infra"
+    }
   }
 
   required_providers {
