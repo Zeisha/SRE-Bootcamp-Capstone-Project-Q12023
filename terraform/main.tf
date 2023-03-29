@@ -5,13 +5,13 @@ resource "aws_cloudwatch_log_group" "capstone-watch" {
 }
 
 resource "aws_kms_key" "capstone-kms" {
-  description             = "capstone kms key "
+  description             = "capstone kms key"
   deletion_window_in_days = 7
 }
 
 # Configure ECS Cluster
-resource "aws_ecs_cluster" "capstone-cluster" {
-  name = "capstone-cluster"
+resource "aws_ecs_cluster" "cluster" {
+  name = "${var.project_name}-cluster"
 
   configuration {
     execute_command_configuration {
@@ -27,41 +27,41 @@ resource "aws_ecs_cluster" "capstone-cluster" {
 }
 
 # Configure Task Defination
-resource "aws_ecs_task_definition" "capstone-task" {
-  family = "capstone"
+resource "aws_ecs_task_definition" "task" {
+  family = var.task_family_name
 
-  container_definitions    = <<EOF
+  container_definitions = <<EOF
 [
-        {
-            "name": "capstone",
-            "image": "zeisha/academy-sre-bootcamp-poonam-yadav:latest",
-            "cpu": 256,
-            "memoryReservation": 512,
-            "links": [],
-            "portMappings": [
-                {
-                    "containerPort": 8000,
-                    "hostPort": 8000,
-                    "protocol": "tcp"
-                }
-            ],
-            "essential": true,
-            "environmentFiles": [
-                {
-                    "value": "arn:aws:s3:::696532135023capstonebucket/.env",
-                    "type": "s3"
-                }
-            ],
-            "logConfiguration": {
-                "logDriver": "awslogs",
-                "options": {
-                    "awslogs-group": "/ecs/capstone",
-                    "awslogs-region": "${var.region}",
-                    "awslogs-stream-prefix": "ecs"
-                }
-            }
-        }
-    ]
+  {
+    "name": "${var.task_family_name}",
+    "image": "zeisha/academy-sre-bootcamp-poonam-yadav:${var.image_tag}",
+    "cpu": 256,
+    "memoryReservation": 512,
+    "links": [],
+    "portMappings": [
+      {
+        "containerPort": 8000,
+        "hostPort": 8000,
+        "protocol": "tcp"
+      }
+    ],
+    "essential": true,
+    "environmentFiles": [
+      {
+          "value": "arn:aws:s3:::696532135023capstonebucket/.env",
+          "type": "s3"
+      }
+    ],
+    "logConfiguration": {
+      "logDriver": "awslogs",
+      "options": {
+        "awslogs-group": "/ecs/capstone",
+        "awslogs-region": "${var.region}",
+        "awslogs-stream-prefix": "ecs"
+      }
+    }
+  }
+]
 EOF
   requires_compatibilities = ["FARGATE"] # use Fargate as the launch type
   network_mode             = "awsvpc"    # add the AWS VPN network mode as this is required for Fargate
@@ -87,7 +87,7 @@ data "aws_iam_policy_document" "assume_role_policy" {
   }
 }
 
-resource "aws_iam_role_policy_attachment" "ecsTaskExecutionRole_policy" {
+resource "aws_iam_role_policy_attachment" "ecs-execution-policy" {
   role       = aws_iam_role.ecsTaskExecutionRole.name
   policy_arn = "arn:aws:iam::aws:policy/service-role/AmazonECSTaskExecutionRolePolicy"
 }
@@ -95,19 +95,19 @@ resource "aws_iam_role_policy_attachment" "ecsTaskExecutionRole_policy" {
 
 
 #Configure load balancer
-resource "aws_alb" "capstone_load_balancer" {
-  name               = "capstone-load-balancer"
+resource "aws_alb" "load-balancer" {
+  name               = "${var.project_name}-lb"
   load_balancer_type = "application"
   subnets            = module.vpc.public_subnets
 
   # security group
-  security_groups = [aws_security_group.load_balancer_security_group.id]
+  security_groups = [aws_security_group.lb-security-group.id]
 }
 
 # create target group 
 
-resource "aws_lb_target_group" "capstone-lb-target" {
-  name        = "capstone-lb-target"
+resource "aws_lb_target_group" "lb-target-group" {
+  name        = "${var.project_name}-lb-tg"
   port        = 8000
   protocol    = "HTTP"
   target_type = "ip"
@@ -115,35 +115,35 @@ resource "aws_lb_target_group" "capstone-lb-target" {
 }
 
 resource "aws_lb_listener" "listener" {
-  load_balancer_arn = aws_alb.capstone_load_balancer.arn #  load balancer
+  load_balancer_arn = aws_alb.load-balancer.arn #  load balancer
   port              = "80"
   protocol          = "HTTP"
   default_action {
     type             = "forward"
-    target_group_arn = aws_lb_target_group.capstone-lb-target.arn # target group
+    target_group_arn = aws_lb_target_group.lb-target-group.arn # target group
   }
 }
 
 
 # Configure ECS Service
-resource "aws_ecs_service" "capstone-service" {
-  name                 = "capstone-service"
-  cluster              = aws_ecs_cluster.capstone-cluster.id
-  task_definition      = aws_ecs_task_definition.capstone-task.arn
+resource "aws_ecs_service" "cluster-service" {
+  name                 = "${var.project_name}-service"
+  cluster              = aws_ecs_cluster.cluster.id
+  task_definition      = aws_ecs_task_definition.task.arn
   force_new_deployment = true
   launch_type          = "FARGATE"
   desired_count        = 1
 
   load_balancer {
-    target_group_arn = aws_lb_target_group.capstone-lb-target.arn # Reference the target group
-    container_name   = aws_ecs_task_definition.capstone-task.family
+    target_group_arn = aws_lb_target_group.lb-target-group.arn # Reference the target group
+    container_name   = aws_ecs_task_definition.task.family
     container_port   = 8000 # Specify the container port
   }
 
   network_configuration {
     subnets          = module.vpc.public_subnets
     assign_public_ip = true # Provide the containers with public IPs
-    security_groups  = [aws_security_group.capstone-service-security-group.id]
+    security_groups  = [aws_security_group.service-security-group.id]
   }
 
   deployment_maximum_percent         = 100
